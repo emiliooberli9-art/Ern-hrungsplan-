@@ -1,0 +1,461 @@
+import { useState } from "react";
+
+const COLORS = {
+  bg: "#0f1117", surface: "#1a1e2b", card: "#212638",
+  accent: "#00c875", accentSoft: "#00c87522", yellow: "#f5c542",
+  red: "#e05252", blue: "#4a9eff", text: "#e8eaf0", muted: "#8892a4", border: "#2e3447",
+};
+
+// ── FIXED MEALS ──────────────────────────────────────────────
+const fixedFruehstueck = {
+  label: "Frühstück", icon: "🌅", fixed: true,
+  name: "Quark-Power Bowl + Ingwershot",
+  items: ["1 Ingwershot (30ml, pur oder mit Zitrone)", "250g Magerquark", "1 Banane", "80g GF-Haferflocken (zert.)", "Süßungspulver (Stevia/Erythrit) nach Geschmack"],
+  kcal: 480, protein: 33, carbs: 66, fat: 4,
+  time: "07:00",
+  tip: "Ingwershot zuerst, nüchtern – maximale Wirkung. Dann die Bowl. Täglich fix.",
+};
+
+// ── NOTFALL-MAHLZEITEN ────────────────────────────────────────
+const notfallMeals = [
+  { name: "Reis + Ei (5 Min.)", items: ["1 Beutel Mikrowellen-Reis (250g, GF)", "2–3 Eier (Rührei, 2 Min.)", "Prise Salz, Olivenöl"], kcal: 520, protein: 30, carbs: 62, fat: 18, why: "Nichts vorbereitet – schnellste vollwertige Option" },
+  { name: "Quark + Banane + Haferflocken", items: ["250g Magerquark", "1–2 Bananen", "60g GF-Haferflocken trocken", "Honig"], kcal: 440, protein: 30, carbs: 62, fat: 4, why: "Wie Frühstück – passt immer und zu jeder Zeit" },
+  { name: "Reiswaffeln + Erdnussmus + Banane", items: ["4 Reiswaffeln", "3 EL Erdnussmus", "1–2 Bananen"], kcal: 430, protein: 14, carbs: 58, fat: 18, why: "Kein Kochen nötig – ideal unterwegs oder nach dem Spiel" },
+  { name: "Joghurt-Bowl (No-Cook)", items: ["200g griech. Joghurt", "30g Nüsse/Mandeln", "2 EL Honig", "1 Banane", "Handvoll Beeren (TK geht auch)"], kcal: 420, protein: 20, carbs: 46, fat: 18, why: "Alles kalt, keine Zubereitung, trotzdem vollwertig" },
+  { name: "Dosen-Mais + Rinderhack + Reis", items: ["150g Rinderhack (TK, schnell gebraten)", "1 Beutel Mikrowellen-Reis", "1 Dose Mais (abgetropft)", "Salz, Pfeffer, Olivenöl"], kcal: 660, protein: 46, carbs: 70, fat: 20, why: "Alles aus dem Vorrat – 10 Minuten" },
+  { name: "Proteinshake-Meal", items: ["2 Messlöffel Whey GF (40g)", "400ml Mandelmilch", "2 Bananen", "2 EL Erdnussmus", "1 EL Honig"], kcal: 580, protein: 46, carbs: 58, fat: 18, why: "Kein festes Essen verfügbar – hoher Nährwert als Shake" },
+];
+
+const fixedAbendessen = {
+  label: "Abendessen", icon: "🌙", fixed: true,
+  name: "3 Rühreier + Reis + Banane + Apfelmus",
+  items: ["3 Eier (Rührei, 1 TL Butter/Kokosöl)", "1 Beutel Mikrowellen-Reis (250g, GF)", "1 Banane", "2–3 EL Apfelmus (ungesüßt)"],
+  kcal: 590, protein: 28, carbs: 72, fat: 18,
+  time: "21:00",
+  tip: "Nach dem Training ideal: Protein + Carbs für Regeneration. Eier = Zink & Cholin.",
+};
+
+// ── BROTLOSE (Schulsnack ~10:00) ─────────────────────────────
+// Wechselt täglich, immer GF, kein Brot, handlich für Schule
+const brotlose = [
+  { name: "Reiswaffeln & Erdnussmus", items: ["3 Reiswaffeln", "2 EL Erdnussmus (natur, GF)", "1 Apfel"], kcal: 310, protein: 10, carbs: 38, fat: 14 },
+  { name: "Joghurt-Beeren-Box", items: ["200g griech. Joghurt (2%)", "Handvoll Beeren (Heidelbeeren/Erdbeeren)", "20g Walnüsse", "1 TL Honig"], kcal: 290, protein: 16, carbs: 22, fat: 16 },
+  { name: "Mandeln & Obst", items: ["30g Mandeln", "1 Banane", "1 Birne"], kcal: 300, protein: 8, carbs: 42, fat: 14 },
+  { name: "Reiswaffeln & Hüttenkäse", items: ["3 Reiswaffeln", "150g Hüttenkäse", "Gurke + Paprika (roh)", "Prise Salz, Pfeffer"], kcal: 280, protein: 18, carbs: 32, fat: 6 },
+  { name: "Nussmix & Trockenfrüchte", items: ["25g Cashews", "25g Walnüsse", "3 Datteln", "1 Apfel"], kcal: 320, protein: 8, carbs: 40, fat: 16 },
+  { name: "Reiswaffeln & Avocado", items: ["3 Reiswaffeln", "½ Avocado (gemust)", "Prise Salz + Zitrone", "1 Orange"], kcal: 310, protein: 6, carbs: 36, fat: 16 },
+  { name: "Joghurt & GF-Granola", items: ["200g griech. Joghurt", "40g GF-Granola", "1 Handvoll Beeren"], kcal: 310, protein: 14, carbs: 36, fat: 12 },
+];
+
+// ── PRE-WORKOUT (~18:30, 1h vor Training) ────────────────────
+const preWorkout = [
+  { name: "Banane & Elektrolyte", items: ["1 Banane", "300ml Wasser + Elektrolyt-Tab"], kcal: 110, protein: 1, carbs: 28, fat: 0 },
+  { name: "Reiswaffel & Honig", items: ["2 Reiswaffeln", "1 EL Honig", "300ml Wasser + Elektrolyt-Tab"], kcal: 180, protein: 3, carbs: 40, fat: 1 },
+  { name: "Datteln & Wasser", items: ["4 Datteln (Medjool)", "300ml Elektrolyt-Wasser"], kcal: 160, protein: 1, carbs: 42, fat: 0 },
+  { name: "Apfelsaft-Iso (selbst)", items: ["200ml Apfelsaft + 200ml Wasser + Prise Salz", "1 Banane"], kcal: 170, protein: 1, carbs: 42, fat: 0 },
+];
+
+// ── POST-WORKOUT (~20:30, sofort nach Training) ───────────────
+const postWorkout = {
+  label: "Post-Training", icon: "⚡", fixed: true,
+  name: "Recovery Shake + Kreatin",
+  items: ["25–30g Whey-Protein GF (Schoko oder Vanille)", "300ml Mandelmilch od. Wasser", "1 Banane", "3g Kreatin Monohydrat (ins Shake)", "Prise Salz (Elektrolyt)"],
+  kcal: 390, protein: 38, carbs: 44, fat: 6,
+  time: "20:30",
+  tip: "Sofort nach Training – das 30-Minuten-Fenster nutzen. Kreatin nur Mo–Do & Sa.",
+};
+
+// ── MITTAGESSEN (~13:00) ──────────────────────────────────────
+const mittagTraining = [
+  // Klassiker
+  { name: "🍗 Hähnchen & Basmatireis", items: ["160g Hähnchenbrustfilet (gegrillt)", "220g Basmatireis (gekocht)", "Rohkost: Gurke, Tomaten, Mais", "2 EL Olivenöl, Zitronensaft, Salz"], kcal: 700, protein: 52, carbs: 78, fat: 18 },
+  // Asiatisch
+  { name: "🍜 Putenbrust & Reisnudeln asian.", items: ["160g Putenbrust (Streifen)", "200g Reisnudeln (gekocht)", "Rohkost: Karotten, Paprika, Mais, Frühlingszwiebeln", "GF-Tamari + Sesam + Limette + Chili"], kcal: 680, protein: 54, carbs: 80, fat: 14 },
+  // Mexikanisch
+  { name: "🌮 Hähnchen-Mais-Bowl (Mex)", items: ["150g Hähnchenbrust (gewürzt: Paprika, Kreuzkümmel, GF)", "220g Basmatireis", "Mais, Tomaten, Avocado (roh)", "Limette, Koriander, GF-Salsa"], kcal: 720, protein: 52, carbs: 76, fat: 22 },
+  // Quinoa
+  { name: "🥗 Hähnchen-Quinoa Bowl", items: ["150g Hähnchenbrust", "180g Quinoa (gekocht)", "Rohkost: Gurke, Paprika, Tomaten, Kichererbsen (Dose)", "Olivenöl-Zitrone-Dressing"], kcal: 680, protein: 54, carbs: 70, fat: 16 },
+  // Steak
+  { name: "🥩 Rindersteak & Süßkartoffel", items: ["160g Rindersteak (lean, medium)", "280g Süßkartoffel (gebacken)", "Rohkost: Tomatensalsa, Avocado", "Olivenöl, Limette, Meersalz"], kcal: 710, protein: 52, carbs: 64, fat: 28 },
+  // Wrap
+  { name: "🌯 Putenbrust-Wrap (GF)", items: ["150g Putenbrust", "2 GF-Maistortillas", "Rohkost: Eisbergsalat, Tomaten, Mais, Paprika", "½ Avocado, GF-Sriracha, Limette"], kcal: 660, protein: 48, carbs: 66, fat: 22 },
+  // Kartoffeln
+  { name: "🥔 Hähnchen & Ofenkartoffeln", items: ["160g Hähnchenbrust", "300g Salzkartoffeln od. Wedges (GF-Gewürze)", "Rohkost: Blattsalat, Gurke, Tomate", "Olivenöl-Essig-Dressing"], kcal: 640, protein: 48, carbs: 68, fat: 16 },
+  // Rinderhack Bolognese-Style
+  { name: "🍝 Rinderhack & GF-Pasta", items: ["150g Rinderhack (mager)", "200g GF-Reisnudeln od. Mais-Pasta", "GF-Tomatensoße (Dose)", "Parmesanraspel, Olivenöl"], kcal: 730, protein: 50, carbs: 82, fat: 22 },
+  // Türkisch
+  { name: "🥙 Lammhack-Rice Bowl", items: ["150g Lammhack (gewürzt: Kreuzkümmel, Koriander)", "200g Basmatireis", "Rohkost: Gurke, Tomaten, Minze", "Joghurt-Dip (natur GF), Olivenöl"], kcal: 710, protein: 46, carbs: 72, fat: 26 },
+  // Schnell & einfach
+  { name: "🍳 Ei-Kartoffel-Hash", items: ["4 Eier (Rührei/Omelette)", "280g Kartoffeln (in Würfel, gebraten GF)", "Paprika, Zwiebeln (roh dazu als Salat)", "Olivenöl, Paprikapulver, Salz"], kcal: 620, protein: 32, carbs: 60, fat: 28 },
+  // Griechisch
+  { name: "🫙 Hähnchen & Quinoa griech.", items: ["150g Hähnchenbrust", "160g Quinoa (gekocht)", "Rohkost: Gurke, Tomaten, Oliven, Feta (wenig)", "Olivenöl-Zitrone-Oregano-Dressing"], kcal: 670, protein: 52, carbs: 60, fat: 22 },
+  // Süßkartoffel-Bowl
+  { name: "🍠 Putenstreifen & Süßkartoffel", items: ["160g Putenbrust (Streifen, gebraten)", "280g Süßkartoffel (gewürfelt, gebacken)", "Rohkost: Rucola, Apfel, Walnüsse", "Olivenöl-Honig-Senf-Dressing (GF-Senf)"], kcal: 680, protein: 50, carbs: 68, fat: 20 },
+  // BBQ-Style
+  { name: "🔥 BBQ-Hähnchen & Kartoffelwedges", items: ["160g Hähnchenschenkel (ohne Haut, BBQ-Marinade GF)", "280g Kartoffelwedges (GF-Gewürze)", "Rohkost: Maissalat, Tomatensalsa", "Limette, Koriander"], kcal: 690, protein: 50, carbs: 68, fat: 22 },
+  // Poke-Style
+  { name: "🍱 Poke Bowl (GF)", items: ["150g Hähnchenbrustfilet (Teriyaki GF)", "200g Sushireis od. Jasminreis", "Rohkost: Mais, Gurke, Avocado, Edamame", "GF-Tamari-Dressing, Sesam"], kcal: 700, protein: 52, carbs: 76, fat: 18 },
+];
+
+const mittagRuhe = [
+  { name: "🥗 Hähnchen-Avocado-Salat", items: ["150g Hähnchenbrust (kalt od. warm)", "½ Avocado", "Großer Rohkostsalat: Rucola, Tomate, Gurke, Mais", "Olivenöl-Balsamico, Sonnenblumenkerne"], kcal: 560, protein: 46, carbs: 24, fat: 28 },
+  { name: "🍳 Eier-Bowl & Kartoffeln", items: ["4 Eier (Rührei)", "200g Salzkartoffeln", "Rohkost: Tomaten, Blattsalat, Gurke", "1 EL Olivenöl, Kräuter"], kcal: 580, protein: 36, carbs: 48, fat: 28 },
+  { name: "🥙 Hähnchen-Wrap (Ruhetag)", items: ["140g Hähnchenbrust (kalt)", "2 GF-Maistortillas", "Rohkost: Blattsalat, Gurke, Tomaten, Paprika", "Guacamole od. Hummus (GF)"], kcal: 560, protein: 42, carbs: 52, fat: 18 },
+  { name: "🫙 Quinoa-Thunfisch entfällt – Rinder-Salat Bowl", items: ["150g Rindersteak (kalt aufgeschnitten)", "150g Quinoa (kalt)", "Rohkost: Rucola, Tomaten, Paprika, Oliven", "Olivenöl-Zitrone-Dressing"], kcal: 600, protein: 48, carbs: 44, fat: 26 },
+];
+
+// ── SPIELTAG SONDERMAHLZEITEN ─────────────────────────────────
+const spieltagPre = { name: "Pre-Match (1,5h vor Spiel)", items: ["GF-Energieriegel (low fat) od. 4 Datteln", "400ml Isoton. Elektrolytgetränk"], kcal: 210, protein: 5, carbs: 44, fat: 2, time: "Spielbeginn −1,5h" };
+const spieltagHalbzeit = { name: "Halbzeit", items: ["1 Banane od. 3 Datteln", "200ml Elektrolytgetränk"], kcal: 120, protein: 1, carbs: 28, fat: 0, time: "Halbzeit" };
+const spieltagPost = { name: "Post-Match Recovery", items: ["25g Whey GF + 300ml Mandelmilch", "1 Banane", "500ml Elektrolytgetränk"], kcal: 420, protein: 38, carbs: 54, fat: 6, time: "Sofort nach Spiel" };
+
+// ── WOCHENTAGE ────────────────────────────────────────────────
+const weekDays = [
+  { day: "Montag",     short: "Mo", type: "training" },
+  { day: "Dienstag",   short: "Di", type: "training" },
+  { day: "Mittwoch",   short: "Mi", type: "training" },
+  { day: "Donnerstag", short: "Do", type: "training" },
+  { day: "Freitag",    short: "Fr", type: "rest" },
+  { day: "Samstag",    short: "Sa", type: "match" },
+  { day: "Sonntag",    short: "So", type: "rest" },
+];
+
+// Brotlose & Pre-Workout rotieren über 14 Tage
+const buildDay = (wdIdx, weekOffset) => {
+  const wd = weekDays[wdIdx];
+  const idx = wdIdx + weekOffset * 7;
+  const bl = brotlose[idx % brotlose.length];
+  const pw = preWorkout[idx % preWorkout.length];
+  const mt = wd.type === "rest" ? mittagRuhe[idx % mittagRuhe.length] : mittagTraining[idx % mittagTraining.length];
+  return { ...wd, brotlose: bl, preWorkout: pw, mittagessen: mt };
+};
+
+const weeks = {
+  1: { label: "Woche 1", days: [0,1,2,3,4,5,6].map(i => buildDay(i, 0)) },
+  2: { label: "Woche 2", days: [0,1,2,3,4,5,6].map(i => buildDay(i, 1)) },
+};
+
+// ── SUPPLEMENTS ──────────────────────────────────────────────
+const suppsTaeglich = [
+  "Vitamin D3 – 2.000 IE (morgens mit Frühstück)",
+  "Omega-3 – 2g (morgens mit Frühstück)",
+  "Magnesium – 300mg (abends, nach dem Abendessen)",
+  "Zink – 10mg (abends mit Abendessen)",
+];
+const suppsTraining = [
+  "Elektrolyt-Tab – in der Trainingsflasche (19:00–20:30)",
+  "Kreatin – 3g im Post-Workout Shake (sofort nach Training)",
+  "Whey-Protein GF – 25–30g im Post-Workout Shake",
+];
+const suppsSpiel = [
+  "Elektrolyte – VOR, WÄHREND (Halbzeit) und NACH dem Spiel",
+  "Kreatin – 3g im Post-Match Shake",
+  "Whey-Protein GF – 25g sofort nach Spiel",
+  "Magnesium – 400mg heute Abend (erhöhte Dosis nach Spiel)",
+];
+
+const hydration = [
+  { phase: "07:00 – Aufwachen", menge: "400ml", tip: "Großes Glas Wasser direkt nach dem Aufstehen." },
+  { phase: "08–13 Uhr – Schule", menge: "700–800ml", tip: "Flasche dabei. Regelmäßig trinken, nicht auf einmal." },
+  { phase: "18:00 – Vor Training", menge: "400ml", tip: "Gut geladen ins Training – Urin sollte hellgelb sein." },
+  { phase: "19:00–20:30 – Training", menge: "150–200ml alle 15 Min.", tip: "MIT Elektrolyt-Tab. Flasche immer dabei!" },
+  { phase: "20:30 – Post-Training", menge: "500–700ml", tip: "Im Shake + extra Wasser. 1kg Schweißverlust = 1,5L ersetzen." },
+  { phase: "Abend", menge: "200ml", tip: "Nicht zu viel kurz vor dem Schlafen." },
+];
+
+// ── COLORS & LABELS ──────────────────────────────────────────
+const typeColors = { training: COLORS.accent, rest: COLORS.blue, match: COLORS.yellow };
+const typeLabels = { training: "💪 Trainingstag", rest: "😴 Ruhetag", match: "⚽ Spieltag" };
+const mealOrder = [
+  { key: "fruehstueck", label: "Frühstück", time: "07:00", icon: "🌅" },
+  { key: "brotlose", label: "Brotlose", time: "10:00", icon: "🎒" },
+  { key: "mittagessen", label: "Mittagessen", time: "13:00", icon: "☀️" },
+  { key: "preWorkout", label: "Pre-Training", time: "18:30", icon: "⚡" },
+  { key: "postWorkout", label: "Post-Training", time: "20:30", icon: "🔋" },
+  { key: "abendessen", label: "Abendessen", time: "21:00", icon: "🌙" },
+];
+const spieltagOrder = [
+  { key: "fruehstueck", label: "Frühstück", time: "07:00", icon: "🌅" },
+  { key: "brotlose", label: "Brotlose", time: "10:00", icon: "🎒" },
+  { key: "mittagessen", label: "Mittagessen", time: "13:00", icon: "☀️" },
+  { key: "spielPre", label: "Pre-Match", time: "Vor Spiel", icon: "⚽" },
+  { key: "spielHalbzeit", label: "Halbzeit", time: "Halbzeit", icon: "🔄" },
+  { key: "spielPost", label: "Post-Match", time: "Nach Spiel", icon: "🔋" },
+  { key: "abendessen", label: "Abendessen", time: "21:00", icon: "🌙" },
+];
+const ruheOrder = [
+  { key: "fruehstueck", label: "Frühstück", time: "07:00", icon: "🌅" },
+  { key: "brotlose", label: "Brotlose", time: "10:00", icon: "🎒" },
+  { key: "mittagessen", label: "Mittagessen", time: "13:00", icon: "☀️" },
+  { key: "abendessen", label: "Abendessen", time: "21:00", icon: "🌙" },
+];
+
+function getMeal(day, key) {
+  if (key === "fruehstueck") return fixedFruehstueck;
+  if (key === "abendessen") return fixedAbendessen;
+  if (key === "postWorkout") return postWorkout;
+  if (key === "brotlose") return day.brotlose;
+  if (key === "preWorkout") return day.preWorkout;
+  if (key === "mittagessen") return day.mittagessen;
+  if (key === "spielPre") return spieltagPre;
+  if (key === "spielHalbzeit") return spieltagHalbzeit;
+  if (key === "spielPost") return spieltagPost;
+  return null;
+}
+
+function calcTotal(day) {
+  const order = day.type === "match" ? spieltagOrder : day.type === "rest" ? ruheOrder : mealOrder;
+  let kcal = 0, protein = 0, carbs = 0, fat = 0;
+  order.forEach(({ key }) => {
+    const m = getMeal(day, key);
+    if (m) { kcal += m.kcal || 0; protein += m.protein || 0; carbs += m.carbs || 0; fat += m.fat || 0; }
+  });
+  return { kcal, protein, carbs, fat };
+}
+
+export default function App() {
+  const [week, setWeek] = useState(1);
+  const [dayIdx, setDayIdx] = useState(0);
+  const [tab, setTab] = useState("plan");
+  const [showNotfall, setShowNotfall] = useState(false);
+  const currentWeek = weeks[week];
+  const day = currentWeek.days[dayIdx];
+  const order = day.type === "match" ? spieltagOrder : day.type === "rest" ? ruheOrder : mealOrder;
+  const total = calcTotal(day);
+  const tc = typeColors[day.type];
+
+  return (
+    <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: "'Inter','Segoe UI',sans-serif", color: COLORS.text }}>
+      {/* HEADER */}
+      <div style={{ background: "linear-gradient(135deg,#141824,#1e2538)", borderBottom: `2px solid ${COLORS.accent}`, padding: "16px 18px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <span style={{ fontSize: 24 }}>⚽</span>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 800 }}>Youth Football Nutrition</div>
+            <div style={{ fontSize: 11, color: COLORS.muted }}>Mo–Do Training · Sa Spiel · Glutenfrei · Persönlich</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {[["plan","📅 Plan"],["supps","💊 Supps"],["hydration","💧 Wasser"]].map(([k,l]) => (
+            <button key={k} onClick={() => setTab(k)} style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: tab === k ? COLORS.accent : COLORS.card, color: tab === k ? "#000" : COLORS.muted }}>{l}</button>
+          ))}
+          <button onClick={() => setShowNotfall(true)} style={{ padding: "6px 13px", borderRadius: 8, border: `1.5px solid ${COLORS.red}`, cursor: "pointer", fontSize: 12, fontWeight: 700, background: `${COLORS.red}22`, color: COLORS.red, marginLeft: "auto" }}>🚨 Notfall</button>
+        </div>
+      </div>
+
+      <div style={{ padding: "16px 14px", maxWidth: 720, margin: "0 auto" }}>
+
+        {/* ── PLAN TAB ── */}
+        {tab === "plan" && <>
+          {/* Week toggle */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            {[1,2].map(w => (
+              <button key={w} onClick={() => { setWeek(w); setDayIdx(0); }} style={{ flex: 1, padding: "8px", borderRadius: 10, border: `2px solid ${week===w?COLORS.accent:COLORS.border}`, background: week===w?COLORS.accentSoft:COLORS.surface, color: week===w?COLORS.accent:COLORS.muted, fontWeight: 700, cursor: "pointer" }}>
+                {weeks[w].label}
+              </button>
+            ))}
+          </div>
+
+          {/* Day pills */}
+          <div style={{ display: "flex", gap: 5, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
+            {currentWeek.days.map((d, i) => (
+              <button key={i} onClick={() => setDayIdx(i)} style={{ flexShrink: 0, width: 54, padding: "8px 4px", borderRadius: 10, border: `2px solid ${dayIdx===i?typeColors[d.type]:COLORS.border}`, background: dayIdx===i?`${typeColors[d.type]}22`:COLORS.surface, color: dayIdx===i?typeColors[d.type]:COLORS.muted, fontWeight: 700, cursor: "pointer", fontSize: 11, textAlign: "center" }}>
+                <div>{d.short}</div>
+                <div style={{ fontSize: 15, marginTop: 2 }}>{d.type==="match"?"⚽":d.type==="training"?"💪":"😴"}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Day summary card */}
+          <div style={{ background: COLORS.surface, borderRadius: 14, padding: "14px 16px", marginBottom: 14, borderLeft: `4px solid ${tc}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 20 }}>{day.day}</div>
+                <div style={{ color: tc, fontWeight: 600, fontSize: 13, marginTop: 2 }}>{typeLabels[day.type]}</div>
+                {day.type === "training" && <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 3 }}>Training 19:00 – 20:30</div>}
+                {day.type === "match" && <div style={{ fontSize: 11, color: COLORS.yellow, marginTop: 3 }}>⚠️ Kein unbekanntes Essen vor dem Spiel!</div>}
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.accent }}>{total.kcal} kcal</div>
+                <div style={{ fontSize: 11, color: COLORS.muted }}>Tagesgesamt</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              {[["Protein", total.protein+"g","#e05252"],["Carbs", total.carbs+"g",COLORS.accent],["Fett", total.fat+"g",COLORS.yellow]].map(([l,v,c]) => (
+                <div key={l} style={{ flex: 1, background: COLORS.card, borderRadius: 10, padding: "9px 6px", textAlign: "center" }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: c }}>{v}</div>
+                  <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 2 }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* MEALS */}
+          {order.map(({ key, label, time, icon }) => {
+            const meal = getMeal(day, key);
+            if (!meal) return null;
+            const isFixed = key === "fruehstueck" || key === "abendessen" || key === "postWorkout";
+            const isHighlight = key === "postWorkout" || key === "spielPost";
+            return (
+              <div key={key} style={{ background: isFixed ? `${COLORS.accent}0e` : COLORS.surface, border: `1px solid ${isFixed ? COLORS.accent+"44" : COLORS.border}`, borderRadius: 13, padding: "13px 15px", marginBottom: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 9 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontSize: 18 }}>{icon}</span>
+                    <div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <span style={{ fontSize: 10, color: isFixed ? COLORS.accent : COLORS.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{label}</span>
+                        <span style={{ fontSize: 10, color: COLORS.muted }}>{time}</span>
+                        {isFixed && <span style={{ fontSize: 9, background: `${COLORS.accent}22`, color: COLORS.accent, padding: "1px 6px", borderRadius: 20, fontWeight: 700 }}>täglich fix</span>}
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 14, marginTop: 2 }}>{meal.name}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.accent }}>{meal.kcal} kcal</div>
+                    <div style={{ fontSize: 10, color: COLORS.muted }}>{meal.protein}g P · {meal.carbs}g K · {meal.fat}g F</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: meal.tip ? 8 : 0 }}>
+                  {meal.items.map((item, i) => (
+                    <span key={i} style={{ background: COLORS.card, borderRadius: 6, padding: "4px 8px", fontSize: 11 }}>{item}</span>
+                  ))}
+                </div>
+                {meal.tip && <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 4 }}>💡 {meal.tip}</div>}
+              </div>
+            );
+          })}
+
+          {/* Supplements for today */}
+          <div style={{ background: `${COLORS.yellow}0f`, border: `1px solid ${COLORS.yellow}44`, borderRadius: 12, padding: "13px 15px", marginTop: 4 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: COLORS.yellow, marginBottom: 9 }}>💊 Supplements heute</div>
+            {suppsTaeglich.map((s, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 5, alignItems: "flex-start" }}>
+                <span style={{ color: COLORS.yellow, fontSize: 10, marginTop: 3 }}>▸</span>
+                <span style={{ fontSize: 12 }}>{s}</span>
+              </div>
+            ))}
+            {(day.type === "training") && <>
+              <div style={{ borderTop: `1px solid ${COLORS.yellow}33`, margin: "9px 0 7px" }} />
+              <div style={{ fontSize: 11, color: COLORS.accent, fontWeight: 700, marginBottom: 7 }}>+ Training (19–20:30 Uhr)</div>
+              {suppsTraining.map((s, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 5, alignItems: "flex-start" }}>
+                  <span style={{ color: COLORS.accent, fontSize: 10, marginTop: 3 }}>▸</span>
+                  <span style={{ fontSize: 12 }}>{s}</span>
+                </div>
+              ))}
+            </>}
+            {day.type === "match" && <>
+              <div style={{ borderTop: `1px solid ${COLORS.yellow}33`, margin: "9px 0 7px" }} />
+              <div style={{ fontSize: 11, color: COLORS.yellow, fontWeight: 700, marginBottom: 7 }}>+ Spieltag</div>
+              {suppsSpiel.map((s, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 5, alignItems: "flex-start" }}>
+                  <span style={{ color: COLORS.yellow, fontSize: 10, marginTop: 3 }}>▸</span>
+                  <span style={{ fontSize: 12 }}>{s}</span>
+                </div>
+              ))}
+            </>}
+          </div>
+        </>}
+
+        {/* ── SUPPS TAB ── */}
+        {tab === "supps" && <>
+          <div style={{ background: COLORS.surface, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Täglicher Supplement-Stack</div>
+            <div style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.6 }}>Alle Produkte <b style={{ color: COLORS.text }}>GF-zertifiziert</b> kaufen – Siegel: <b style={{ color: COLORS.text }}>Cologne List, Informed Sport</b>. Eltern & Trainer einbeziehen.</div>
+          </div>
+          {[
+            { name:"Vitamin D3", dose:"2.000 IE täglich", timing:"Morgens mit Frühstück", why:"Knochen, Immunsystem, Muskelkraft. Bei Hallensport fast immer Mangel.", daily:true },
+            { name:"Omega-3 (EPA/DHA)", dose:"2g täglich", timing:"Morgens mit Frühstück", why:"Anti-Entzündung, Gelenke, schnellere Regeneration, Konzentration.", daily:true },
+            { name:"Magnesium", dose:"300mg täglich", timing:"Abends nach Abendessen", why:"Verhindert Krämpfe, verbessert Schlaf & Nervenfunktion.", daily:true },
+            { name:"Zink", dose:"10mg täglich", timing:"Abends mit Abendessen", why:"Immunsystem, Wundheilung, hormonelle Balance im Wachstum.", daily:true },
+            { name:"Elektrolyt-Tabs", dose:"1 Tab pro Training/Spiel", timing:"In Trinkflasche beim Sport", why:"Natrium, Kalium, Magnesium ersetzen. Verhindert Krämpfe & Einbrüche.", daily:false },
+            { name:"Kreatin Monohydrat", dose:"3g – nur Mo–Do & Sa", timing:"Im Post-Workout Shake", why:"Mehr Sprintpower & explosive Kraft. Ab ~14 Jahren sinnvoll.", daily:false },
+            { name:"Whey-Protein (GF)", dose:"25–30g – Mo–Do & Sa", timing:"Im Post-Workout Shake (sofort)", why:"Ergänzt das Abendessen-Protein. Wichtig im 30-Min-Fenster nach Training.", daily:false },
+          ].map((s, i) => (
+            <div key={i} style={{ background: COLORS.surface, borderRadius: 12, padding: "14px", marginBottom: 10, borderLeft: `3px solid ${s.daily ? COLORS.accent : COLORS.yellow}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 7 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{s.name}</div>
+                <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                  {!s.daily && <span style={{ background:`${COLORS.yellow}22`, color:COLORS.yellow, padding:"2px 7px", borderRadius:20, fontSize:10, fontWeight:700 }}>Trainingstage</span>}
+                  <span style={{ background:COLORS.accentSoft, color:COLORS.accent, padding:"2px 8px", borderRadius:20, fontSize:11, fontWeight:700 }}>{s.dose}</span>
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: COLORS.text, marginBottom: 5, lineHeight: 1.5 }}>💡 {s.why}</div>
+              <div style={{ fontSize: 11, color: COLORS.muted }}>⏰ {s.timing}</div>
+            </div>
+          ))}
+          <div style={{ background:`${COLORS.red}18`, border:`1px solid ${COLORS.red}55`, borderRadius:12, padding:"13px 15px" }}>
+            <div style={{ fontWeight:700, color:COLORS.red, marginBottom:6 }}>⚠️ Wichtig</div>
+            <div style={{ fontSize:12, lineHeight:1.7 }}>Keine Stimulanzien (Koffein, Pre-Workout) unter 16 Jahren. Kreatin erst ab ~14 in Absprache mit Eltern. Keine Mega-Dosen. Nur Markenprodukte aus Apotheke oder geprüften Quellen.</div>
+          </div>
+        </>}
+
+        {/* ── HYDRATION TAB ── */}
+        {tab === "hydration" && <>
+          <div style={{ background: COLORS.surface, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.blue, marginBottom: 6 }}>💧 Trinken – Tagesplan</div>
+            <div style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.6 }}><b style={{ color: COLORS.text }}>2% Wasserverlust = −20% Leistung.</b> Ziel: Urin hellgelb bis klar. Trainingstage: 3,0–3,5L. Ruhetage: 2,0–2,5L.</div>
+          </div>
+          {hydration.map((h, i) => (
+            <div key={i} style={{ background: COLORS.surface, borderRadius: 12, padding: "12px 14px", marginBottom: 9, display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: `${COLORS.blue}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>💧</div>
+              <div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{h.phase}</span>
+                  <span style={{ background:`${COLORS.blue}22`, color:COLORS.blue, padding:"2px 8px", borderRadius:20, fontSize:12, fontWeight:700 }}>{h.menge}</span>
+                </div>
+                <div style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.5 }}>{h.tip}</div>
+              </div>
+            </div>
+          ))}
+          <div style={{ background: COLORS.surface, borderRadius: 12, padding: "14px 16px" }}>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 11 }}>⚡ DIY Elektrolyt-Getränk</div>
+            {[["500ml Wasser","Basis"],["⅛ TL Himalayasalz","Natrium"],["1 EL Honig","Energie (Glukose)"],["Saft ½ Zitrone","Kalium + Geschmack"],["Optional: Prise Kaliumchlorid","Extra Kalium (Apotheke)"]].map(([a,b],i,arr) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom: i<arr.length-1?`1px solid ${COLORS.border}`:"none" }}>
+                <span style={{ fontSize:12 }}>{a}</span>
+                <span style={{ fontSize:11, color:COLORS.muted }}>{b}</span>
+              </div>
+            ))}
+            <div style={{ marginTop:10, fontSize:12, color:COLORS.muted }}>Fertig-Alternative: <b style={{ color:COLORS.text }}>Nuun Sport, SiS GO Hydro, Precision Hydration</b> – alle GF-geprüft.</div>
+          </div>
+        </>}
+      </div>
+
+      {/* ── NOTFALL MODAL ── */}
+      {showNotfall && (
+        <div onClick={() => setShowNotfall(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: COLORS.surface, borderRadius: "20px 20px 0 0", padding: "20px 16px 32px", width: "100%", maxWidth: 720, maxHeight: "85vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: COLORS.red }}>🚨 Notfall-Mahlzeiten</div>
+                <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>Nichts vorbereitet? Kein Problem – diese Optionen retten den Tag.</div>
+              </div>
+              <button onClick={() => setShowNotfall(false)} style={{ background: COLORS.card, border: "none", color: COLORS.muted, fontSize: 20, width: 36, height: 36, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            </div>
+            {notfallMeals.map((m, i) => (
+              <div key={i} style={{ background: COLORS.card, borderRadius: 12, padding: "13px 14px", marginBottom: 10, borderLeft: `3px solid ${COLORS.red}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+                  <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 8 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.accent }}>{m.kcal} kcal</div>
+                    <div style={{ fontSize: 10, color: COLORS.muted }}>{m.protein}g P · {m.carbs}g K</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+                  {m.items.map((item, j) => (
+                    <span key={j} style={{ background: COLORS.surface, borderRadius: 6, padding: "3px 8px", fontSize: 11 }}>{item}</span>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: COLORS.muted }}>✅ {m.why}</div>
+              </div>
+            ))}
+            <div style={{ background: `${COLORS.yellow}18`, border: `1px solid ${COLORS.yellow}44`, borderRadius: 10, padding: "10px 14px", marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: COLORS.yellow, fontWeight: 600, marginBottom: 4 }}>💡 Goldene Notfall-Regel</div>
+              <div style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.6 }}>Irgendetwas essen ist immer besser als nichts. Protein + Carbs priorisieren. Kein Fast Food – aber wenn es wirklich keine Option gibt: Pommes ohne Soße + gegrilltes Fleisch (GF kontrollieren).</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
